@@ -15,11 +15,14 @@ from logging import Formatter, FileHandler
 from flask_wtf import FlaskForm as Form
 from forms import *
 import sys
+from flask_wtf.csrf import CSRFProtect
+
 #----------------------------------------------------------------------------#
 # App Config.
 #----------------------------------------------------------------------------#
 
 app = Flask(__name__)
+csrf = CSRFProtect(app)
 moment = Moment(app)
 app.config.from_object('config')
 db = SQLAlchemy(app)
@@ -363,6 +366,8 @@ def show_venue(venue_id):
 
 @app.route('/venues/create', methods=['GET'])
 def create_venue_form():
+  app = Flask(__name__)
+  csrf.init_app(app)
   form = VenueForm()
   return render_template('forms/new_venue.html', form=form)
 
@@ -378,6 +383,10 @@ def create_venue_submission():
 #   # e.g., flash('An error occurred. Venue ' + data.name + ' could not be listed.')
 #   # see: http://flask.pocoo.org/docs/1.0/patterns/flashing/
 #   return render_template('pages/home.html')
+  app = Flask(__name__)
+  csrf.init_app(app)
+  form = VenueForm(request.form)
+  if form.validate():
     error = False
     try:
         venue = Venue()
@@ -388,7 +397,6 @@ def create_venue_submission():
         venue.city = request.form.get("city")
         venue.state = request.form.get("state")
         venue.website = request.form.get("website_link")
-        # venue.seeking_talent = request.form.get("seeking_talent")
         venue.seeking_description = request.form.get("seeking_description")
         tmpt_genres = request.form.getlist('genres')
         venue.genres = ','.join(tmpt_genres)
@@ -404,9 +412,11 @@ def create_venue_submission():
             flash('An error occurred while trying to create new Venue' +
                   request.form.get("name") + 'Would not be added to the list!')
         else:
-            flash('Venue ' + request.form['name'] +
-                  ' was successfully listed!')
-    return render_template('pages/home.html')
+            flash('Venue ' + request.form['name'] + ' was successfully listed!')
+  else:
+      print(form.errors)
+      flash('An error occurred with the form. Check form and try again')
+  return redirect(url_for('index'))
 
 @app.route('/venues/<venue_id>', methods=['DELETE'])
 def delete_venue(venue_id):
@@ -603,6 +613,8 @@ def edit_artist(artist_id):
   # }
   # TODO: populate form with fields from artist with ID <artist_id>
   # return render_template('forms/edit_artist.html', form=form, artist=artist)
+  app = Flask(__name__)
+  csrf.init_app(app)
   form = ArtistForm()
   artist = Artist.query.get(artist_id)
   return render_template('forms/edit_artist.html', form=form, artist=artist)
@@ -614,33 +626,40 @@ def edit_artist_submission(artist_id):
   # artist record with ID <artist_id> using the new attributes
 
   # return redirect(url_for('show_artist', artist_id=artist_id))
-    error = False
-    try:
-        artist = Artist.query.get(artist_id)
-        artist.name = request.form.get("name")
-        artist.phone = request.form.get("phone")
-        artist.city = request.form.get("city")
-        artist.state = request.form.get("state")
-        artist.website = request.form.get("website_link")
-        artist.image_link = request.form.get("image_link")
-        artist.facebook_link = request.form.get("facebook_link")
-        artist.seeking_description = request.form.get("seeking_description")
-        tmp_genres = request.form.getlist("genres")
-        artist.genres = ','.join(tmp_genres)
-        db.session.add(artist)
-        db.session.commit()
-    except:
-        error = True
-        db.session.rollback()
-        print(sys.exc_info())
-    finally:
-        db.session.close()
-        if error:
-             return redirect(("server_error"))
-        else:
-            return redirect(url_for("show_artist", artist_id=artist_id))
+    app = Flask(__name__)
+    csrf.init_app(app)
+    form = ArtistForm(request.form)
+    if form.validate():
+      error = False
+      try:
+          artist = Artist.query.get(artist_id)
+          artist.name = request.form.get("name")
+          artist.phone = request.form.get("phone")
+          artist.city = request.form.get("city")
+          artist.state = request.form.get("state")
+          artist.website = request.form.get("website_link")
+          artist.image_link = request.form.get("image_link")
+          artist.facebook_link = request.form.get("facebook_link")
+          artist.seeking_description = request.form.get("seeking_description")
+          tmp_genres = request.form.getlist("genres")
+          artist.genres = ','.join(tmp_genres)
+          db.session.add(artist)
+          db.session.commit()
+      except:
+          error = True
+          db.session.rollback()
+          print(sys.exc_info())
+      finally:
+          db.session.close()
+          if error:
+              return redirect(("server_error"))
+          else:
+              return redirect(url_for("show_artist", artist_id=artist_id))
 
-
+    else:
+        print(form.errors)
+        flash('An error occurred with the form. Check form and try again')
+    return redirect(url_for('index'))
 
 @app.route('/venues/<int:venue_id>/edit', methods=['GET'])
 def edit_venue(venue_id):
@@ -661,6 +680,8 @@ def edit_venue(venue_id):
   # }
   # TODO: populate form with values from venue with ID <venue_id>
   # return render_template('forms/edit_venue.html', form=form, venue=venue)
+  app = Flask(__name__)
+  csrf.init_app(app)
   form = VenueForm()
   venue = Venue.query.get(venue_id).to_dict()
   return render_template('forms/edit_venue.html', form=form, venue=venue)
@@ -671,35 +692,46 @@ def edit_venue_submission(venue_id):
   # venue record with ID <venue_id> using the new attributes
   # return redirect(url_for('show_venue', venue_id=venue_id))
     venue = Venue.query.get(venue_id)
+    app = Flask(__name__)
+    csrf.init_app(app)
+    form = VenueForm(request.form)
+    if form.validate():
+      error = False
+      try:
+          venue.name = request.form.get("name")
+          venue.city = request.form.get("city")
+          venue.phone = request.form.get("phone")
+          venue.state = request.form.get("state")
+          venue.facebook_link = request.form.get("facebook_link")
+          venue.address = request.form.get("address")
+          tmp_genres = request.form.getlist('genres')
+          venue.genres = ','.join(tmp_genres)  # convert list to string
+          db.session.add(venue)
+          db.session.commit()
+      except:
+          error = True
+          db.session.rollback()
+          print(sys.exc_info())
+      finally:
+          db.session.close()
+          if error:
+              flash('Error occurred while savings '+request.form.get("name") + '  venue.Please try again ')
+          else:
+              flash(request.form['name'] + " venue was successfully updated")
+      return redirect(url_for('show_venue', venue_id=venue_id))
+    else:
+        print(form.errors)
+        flash('An error occurred with the form. Check form and try again')
+    return redirect(url_for('index'))
 
-    error = False
-    try:
-        venue.name = request.form.get("name")
-        venue.city = request.form.get("city")
-        venue.phone = request.form.get("phone")
-        venue.state = request.form.get("state")
-        venue.facebook_link = request.form.get("facebook_link")
-        venue.address = request.form.get("address")
-        tmp_genres = request.form.getlist('genres')
-        venue.genres = ','.join(tmp_genres)  # convert list to string
-        db.session.add(venue)
-        db.session.commit()
-    except:
-        error = True
-        db.session.rollback()
-        print(sys.exc_info())
-    finally:
-        db.session.close()
-        if error:
-            flash('Error occurred while savings '+request.form.get("name") + '  venue.Please try again ')
-        else:
-            flash(request.form['name'] + " venue was successfully updated")
-    return redirect(url_for('show_venue', venue_id=venue_id))
+
 #  Create Artist
 #  ----------------------------------------------------------------
 
 @app.route('/artists/create', methods=['GET'])
 def create_artist_form():
+  app = Flask(__name__)
+  csrf.init_app(app)
   form = ArtistForm()
   return render_template('forms/new_artist.html', form=form)
 
@@ -714,33 +746,40 @@ def create_artist_submission():
   # TODO: on unsuccessful db insert, flash an error instead.
   # e.g., flash('An error occurred. Artist ' + data.name + ' could not be listed.')
   # return render_template('pages/home.html')
-    form = ArtistForm()
-    error = False
-    # request_data = request.form
-    try:
-        artist = Artist()
-        artist.name = request.form.get("name")
-        artist.city = request.form.get("city")
-        artist.phone = request.form.get("phone")
-        artist.state = request.form.get("state")
-        artist.image_link = request.form.get("image_link")
-        artist.website = request.form.get("website_link")
-        artist.facebook_link = request.form.get("facebook_link") 
-        tmp_genres = request.form.getlist("genres")
-        artist.genres = ','.join(tmp_genres)
-        db.session.add(artist)
-        db.session.commit()
-    except:
-        error = True
-        db.session.rollback()
-        print(sys.exc_info(),"this is the error")
-    finally:
-        db.session.close()
-        if error:
-            flash('An error occurred. Artist ' +request.form['name'] + ' could not be listed.')
-        else:
-            flash('Artist ' + request.form['name'] +' was successfully listed!')
-        return render_template('pages/home.html')
+    app = Flask(__name__)
+    csrf.init_app(app)
+    form = ArtistForm(request.form)
+    if form.validate():
+      error = False
+      # request_data = request.form
+      try:
+          artist = Artist()
+          artist.name = request.form.get("name")
+          artist.city = request.form.get("city")
+          artist.phone = request.form.get("phone")
+          artist.state = request.form.get("state")
+          artist.image_link = request.form.get("image_link")
+          artist.website = request.form.get("website_link")
+          artist.facebook_link = request.form.get("facebook_link") 
+          tmp_genres = request.form.getlist("genres")
+          artist.genres = ','.join(tmp_genres)
+          db.session.add(artist)
+          db.session.commit()
+      except:
+          error = True
+          db.session.rollback()
+          print(sys.exc_info(),"this is the error")
+      finally:
+          db.session.close()
+          if error:
+              flash('An error occurred. Artist ' +request.form['name'] + ' could not be listed.')
+          else:
+              flash('Artist ' + request.form['name'] +' was successfully listed!')
+          return render_template('pages/home.html')
+    else:
+        print(form.errors)
+        flash('An error occurred with the form. Check form and try again')
+    return redirect(url_for('index'))
 
 
 #  Shows
